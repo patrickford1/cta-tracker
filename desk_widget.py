@@ -25,7 +25,8 @@ from AppKit import (
     NSWindowCloseButton, NSWindowMiniaturizeButton, NSWindowZoomButton, NSBackingStoreBuffered,
     NSLayoutAttributeCenterY, NSLayoutAttributeCenterX,
     NSUserInterfaceLayoutOrientationHorizontal, NSUserInterfaceLayoutOrientationVertical,
-    NSImage, NSImageView, NSBezierPath, NSImageScaleProportionallyDown
+    NSImage, NSImageView, NSBezierPath, NSImageScaleProportionallyDown,
+    NSWindowCollectionBehaviorCanJoinAllSpaces, NSWindowCollectionBehaviorStationary
 )
 
 APP = "http://127.0.0.1:8000"
@@ -121,6 +122,7 @@ class Controller(NSObject):
         y = int(screen.origin.y + screen.size.height - height)
         style = (NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskResizable)
         self.window = NSWindow.alloc().initWithContentRect_styleMask_backing_defer_(((x, y), (width, height)), style, NSBackingStoreBuffered, False)
+        self.window.setCollectionBehavior_(NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorStationary)
         # Style: rounded, semi-translucent, CTA blue background
         self.window.setOpaque_(False)
         self.window.setAlphaValue_(0.95)
