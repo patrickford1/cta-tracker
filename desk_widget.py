@@ -311,20 +311,16 @@ class Controller(NSObject):
         NSColor.clearColor().set()
         NSBezierPath.bezierPathWithRect_(((0, 0), (size, size))).fill()
         NSColor.whiteColor().set()
-        line_width = 1.6
-        dot_radius = size * 0.12
-        dot = NSBezierPath.bezierPathWithOvalInRect_(((size / 2.0 - dot_radius, size / 2.0 - dot_radius), (dot_radius * 2, dot_radius * 2)))
-        dot.fill()
-
-        radii = (size * 0.3, size * 0.45, size * 0.6)
+        center = (size * 0.35, size * 0.35)
+        line_width = max(size * 0.12, 1.5)
+        radii = (size * 0.18, size * 0.32, size * 0.46)
         for radius in radii:
-            for start, end in ((135.0, 225.0), (-45.0, 45.0)):
-                arc = NSBezierPath.bezierPath()
-                arc.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
-                    (size / 2.0, size / 2.0), radius, start, end, False
-                )
-                arc.setLineWidth_(line_width)
-                arc.stroke()
+            arc = NSBezierPath.bezierPath()
+            arc.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+                center, radius, 0.0, 90.0, False
+            )
+            arc.setLineWidth_(line_width)
+            arc.stroke()
         image.unlockFocus()
         image.setTemplate_(True)
         return image
