@@ -199,6 +199,7 @@ class Controller(NSObject):
         icon_size = 18
         self.clock_icon_size = icon_size
         self.clock_icon_image = self._make_clock_icon(icon_size)
+        self.radio_icon_image = self._make_radio_icon(icon_size)
         # Brown Line bullet (CTA Brown #62361B)
         self.bullet = NSView.alloc().initWithFrame_(((0, 0), (0, 0)))
         self.bullet.setWantsLayer_(True)
@@ -252,7 +253,7 @@ class Controller(NSObject):
         self.train_pulse_view = None
         self.bus_pulse_view = None
         self.pulse_timers = {}
-        self.status_labels = []
+        self.status_icons = []
         self.status_constraints = []
         self.window.makeKeyAndOrderFront_(None)
         NSApp().activateIgnoringOtherApps_(True)
@@ -300,6 +301,30 @@ class Controller(NSObject):
         hour_hand.setLineWidth_(line_width)
         hour_hand.stroke()
 
+        image.unlockFocus()
+        image.setTemplate_(True)
+        return image
+
+    def _make_radio_icon(self, size):
+        image = NSImage.alloc().initWithSize_((size, size))
+        image.lockFocus()
+        NSColor.clearColor().set()
+        NSBezierPath.bezierPathWithRect_(((0, 0), (size, size))).fill()
+        NSColor.whiteColor().set()
+        line_width = 1.6
+        dot_radius = size * 0.12
+        dot = NSBezierPath.bezierPathWithOvalInRect_(((size / 2.0 - dot_radius, size / 2.0 - dot_radius), (dot_radius * 2, dot_radius * 2)))
+        dot.fill()
+
+        radii = (size * 0.3, size * 0.45, size * 0.6)
+        for radius in radii:
+            for start, end in ((135.0, 225.0), (-45.0, 45.0)):
+                arc = NSBezierPath.bezierPath()
+                arc.appendBezierPathWithArcWithCenter_radius_startAngle_endAngle_clockwise_(
+                    (size / 2.0, size / 2.0), radius, start, end, False
+                )
+                arc.setLineWidth_(line_width)
+                arc.stroke()
         image.unlockFocus()
         image.setTemplate_(True)
         return image
@@ -377,9 +402,10 @@ class Controller(NSObject):
             self.bus_times_stack.addArrangedSubview_(minute_label)
             self.bus_minute_views.append((minute_label, item))
 
-    def _make_status_label(self):
+    def _make_status_icon(self, icon_type):
+        image = self.clock_icon_image if icon_type == "clock" else self.radio_icon_image
         view = NSImageView.alloc().initWithFrame_(((0, 0), (self.clock_icon_size, self.clock_icon_size)))
-        view.setImage_(self.clock_icon_image)
+        view.setImage_(image)
         view.setImageScaling_(NSImageScaleProportionallyDown)
         view.setTranslatesAutoresizingMaskIntoConstraints_(False)
         view.setHidden_(False)
@@ -390,18 +416,22 @@ class Controller(NSObject):
         for constraint in self.status_constraints:
             constraint.setActive_(False)
         self.status_constraints = []
-        for label in self.status_labels:
-            label.removeFromSuperview()
-        self.status_labels = []
+        for icon in self.status_icons:
+            icon.removeFromSuperview()
+        self.status_icons = []
 
-    def _update_status_badges(self, scheduled_items):
+    def _update_status_badges(self, status_items):
         self._clear_status_badges()
-        if not scheduled_items:
+        if not status_items:
             return
         container = self.badge_container
         container.setHidden_(False)
-        for view, item in scheduled_items:
-            badge = self._make_status_label()
+        for entry in status_items:
+            view = entry.get("view")
+            icon_type = entry.get("icon")
+            if view is None:
+                continue
+            badge = self._make_status_icon(icon_type)
             container.addSubview_(badge)
             center = badge.centerXAnchor().constraintEqualToAnchor_(view.centerXAnchor())
             top = badge.topAnchor().constraintEqualToAnchor_(container.topAnchor())
@@ -409,7 +439,7 @@ class Controller(NSObject):
             for constraint in (center, top, bottom):
                 constraint.setActive_(True)
                 self.status_constraints.append(constraint)
-            self.status_labels.append(badge)
+            self.status_icons.append(badge)
 
     def _start_timer_pulse(self, view, key):
         if view is None:
@@ -641,7 +671,7 @@ class Controller(NSObject):
         else:
             train_items = [{"text": ttext, "scheduled": False, "minutes": None, "route": None}]
             train_text = ttext
-        bus_items = [{"text": fmt(m), "minutes": m} for m in bmins] if bmins else []
+        bus_items = [{"text": fmt(m), "minutes": m, "scheduled": False} for m in bmins] if bmins else []
         bus_times_text = btext
         log_text = f"{TRAIN_PREFIX} {train_text}   {BUS_PREFIX} {bus_times_text}"
         print("desk_widget:", log_text, "| train items:", tcount, "bus items:", bcount, "| sch:", train_scheduled)
@@ -673,12 +703,21 @@ class Controller(NSObject):
                 first_route = first_item.get("route")
         self._set_train_bullet_color(first_route)
         self._update_bus_times_views(bus_items, bus_times_text)
-        scheduled_views = [
-            (view, item)
-            for view, item in self.train_minute_views
-            if item.get("scheduled")
-        ]
-        self._update_status_badges(scheduled_views)
+        status_items = []
+        for view, item in self.train_minute_views:
+            if not isinstance(item, dict):
+                continue
+            if item.get("minutes") is None:
+                continue
+            icon = "clock" if item.get("scheduled") else "radio"
+            status_items.append({"view": view, "icon": icon})
+        for view, item in self.bus_minute_views:
+            if not isinstance(item, dict):
+                continue
+            if item.get("minutes") is None:
+                continue
+            status_items.append({"view": view, "icon": "radio"})
+        self._update_status_badges(status_items)
         self._update_pulses()
 
 
